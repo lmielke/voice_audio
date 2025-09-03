@@ -1,0 +1,25 @@
+{
+  "apps": [
+    {
+      "name": "voice",
+      "script": "C:\\Users\\lars\\.virtualenvs\\voice_audio-Lf8x-_ww\\Scripts\\pythonw.exe",
+      "args": [
+        "-m",
+        "voice",
+        "server",
+        "-v",
+        "1"
+      ],
+      "cwd": "C:\\Users\\lars\\python_venvs\\packages\\voice_audio",
+      "env": {
+        "PYTHONPATH": "C:\\Users\\lars\\python_venvs\\packages\\voice_audio",
+        "PIPENV_IGNORE_VIRTUALENVS": 1,
+        "pg_alias": "va",
+        "appName": "voice",
+        "test_color": "GREEN",
+        "port": 9007
+      },
+      "max_restarts": 2
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+verbose: 0
+pg_name: voice
+tgt_dir: /temp
+pg_alias: va

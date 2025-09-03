@@ -1,0 +1,35 @@
+FROM piper_base
+
+WORKDIR /app
+
+# Set the PATH to include both the virtual environment and Piper binary
+ENV PATH="/app/venv/bin:/app/piper:$PATH"
+
+# Install PulseAudio client utilities (for paplay)
+RUN apt update && apt install -y --fix-missing pulseaudio-utils
+
+# Download and install Piper (Linux x86_64 version)
+RUN wget -O piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz \
+    && tar -xvf piper.tar.gz -C /app/ \
+    && rm piper.tar.gz \
+    && chmod +x /app/piper/piper
+
+# Install piper-tts inside the virtual environment
+RUN /app/venv/bin/pip install --no-cache-dir piper-tts
+
+# copy package files
+COPY speak.py /app/speak.py
+COPY run_tts.sh /app/run_tts.sh
+# some more package config
+ENV IN_CONTAINER=1
+RUN chmod +x /app/run_tts.sh
+
+# Create directory for Piper models and download the voice model and its config
+RUN mkdir -p /app/piper_models \
+    && wget -O /app/piper_models/en_US-lessac-medium.onnx \
+       https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx \
+    && wget -O /app/piper_models/en_US-lessac-medium.onnx.json \
+       https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+
+# Set the entrypoint to bash for interactive debugging/testing
+CMD ["tail", "-f", "/dev/null"]
