@@ -210,3 +210,15 @@ def main(*args, text:str=None, file:str=None, **kwargs) -> None:
 
     speaker = Speaker(*args, **kwargs)
     speaker.speak(input_text, *args, **kwargs)
+
+if __name__ == "__main__":
+        # Host mode: Parse command-line arguments.
+    parser = argparse.ArgumentParser(
+        description="Generate speech using a persistent Docker TTS container and play the audio."
+    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-t", "--text", help="Direct input text for TTS.")
+    group.add_argument("-f", "--file", help="Path to text file for TTS.")
+    args = parser.parse_args()
+
+    main(text=args.text, file=args.file)

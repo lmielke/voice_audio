@@ -3,5 +3,5 @@
 if [ "$#" -gt 0 ]; then
   echo "$1" > /app/speak.txt
 fi
-python3 /app/speak.py
+python3 /app/speaker.py
 cp /app/output.wav /output/

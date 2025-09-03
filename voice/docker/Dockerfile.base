@@ -23,7 +23,7 @@ RUN python3.11 -m venv /app/venv
 
 # Copy requirements file into the container
 COPY requirements.txt /app/requirements.txt
-COPY speak.py /app/speak.py
+COPY ../speaker.py /app/speaker.py
 
 # Upgrade pip and install required Python libraries
 RUN /app/venv/bin/pip install --upgrade pip setuptools wheel \
