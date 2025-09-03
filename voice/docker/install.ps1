@@ -20,7 +20,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Running test TTS command..."
 # This command uses the installed package to generate speech saying "install completed successfully"
-pipenv run python speak -t "install completed successfully"
+pipenv run va speak -t "install completed successfully"
 
 Write-Host "Installation completed successfully!"
 
