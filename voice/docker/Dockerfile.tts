@@ -7,7 +7,7 @@ ENV PATH="/app/venv/bin:/app/piper:$PATH"
 
 # Install PulseAudio client utilities (for paplay)
 RUN apt update && apt install -y --fix-missing pulseaudio-utils
-RUN apt-get install -y dos2unix
+# RUN apt-get install -y dos2unix
 
 # Download and install Piper (Linux x86_64 version)
 RUN wget -O piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz \
@@ -21,8 +21,8 @@ RUN /app/venv/bin/pip install --no-cache-dir piper-tts
 # copy package files -- PATHS UPDATED
 COPY voice/speaker.py /app/speaker.py
 COPY voice/docker/run_tts.sh /app/run_tts.sh
-RUN dos2unix /app/run_tts.sh
-RUN dos2unix /app/speaker.py
+# RUN dos2unix /app/run_tts.sh
+# RUN dos2unix /app/speaker.py
 
 # some more package config
 ENV IN_CONTAINER=1
