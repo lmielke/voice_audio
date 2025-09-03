@@ -1,10 +1,9 @@
-# Declare the build argument with a default value
-ARG DEBIAN_FRONTEND=noninteractive
+# Start with the base image
 FROM ubuntu:latest
 
-# Set the environment variable using the build argument
+# Declare the build argument here so it's in scope
+ARG DEBIAN_FRONTEND=noninteractive
 ENV DEBIAN_FRONTEND=$DEBIAN_FRONTEND
-
 
 # Set working directory inside container
 WORKDIR /app
