@@ -17,9 +17,10 @@ RUN wget -O piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023
 # Install piper-tts inside the virtual environment
 RUN /app/venv/bin/pip install --no-cache-dir piper-tts
 
-# copy package files
-COPY speaker.py /app/speaker.py
-COPY docker/run_tts.sh /app/run_tts.sh
+# copy package files -- PATHS UPDATED
+COPY voice/speaker.py /app/speaker.py
+COPY voice/docker/run_tts.sh /app/run_tts.sh
+
 # some more package config
 ENV IN_CONTAINER=1
 RUN chmod +x /app/run_tts.sh
@@ -27,9 +28,9 @@ RUN chmod +x /app/run_tts.sh
 # Create directory for Piper models and download the voice model and its config
 RUN mkdir -p /app/piper_models \
     && wget -O /app/piper_models/en_US-lessac-medium.onnx \
-       https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx \
     && wget -O /app/piper_models/en_US-lessac-medium.onnx.json \
-       https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
 
 # Set the entrypoint to bash for interactive debugging/testing
 CMD ["tail", "-f", "/dev/null"]

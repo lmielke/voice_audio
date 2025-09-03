@@ -3,14 +3,16 @@
 # This script installs the Piper TTS system in a Docker container.
 
 Write-Host "Building Docker image: piper_base..."
-docker build -t piper_base -f Dockerfile.base .
+# Run from project root, pointing to the Dockerfile's full path
+docker build -t piper_base -f voice/docker/Dockerfile.base .
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Error: Failed to build piper_base."
     exit $LASTEXITCODE
 }
 
 Write-Host "Building Docker image: piper_tts..."
-docker build -t piper_tts -f Dockerfile.tts .
+# Run from project root, pointing to the Dockerfile's full path
+docker build -t piper_tts -f voice/docker/Dockerfile.tts .
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Error: Failed to build piper_tts."
     exit $LASTEXITCODE
