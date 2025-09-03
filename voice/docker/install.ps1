@@ -4,7 +4,7 @@
 
 Write-Host "Building Docker image: piper_base..."
 # Run from project root, pointing to the Dockerfile's full path
-docker build -t piper_base -f voice/docker/Dockerfile.base .
+docker build --no-cache -t piper_base -f voice/docker/Dockerfile.base .
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Error: Failed to build piper_base."
     exit $LASTEXITCODE
@@ -12,7 +12,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Building Docker image: piper_tts..."
 # Run from project root, pointing to the Dockerfile's full path
-docker build -t piper_tts -f voice/docker/Dockerfile.tts .
+docker build --no-cache -t piper_tts -f voice/docker/Dockerfile.tts .
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Error: Failed to build piper_tts."
     exit $LASTEXITCODE
