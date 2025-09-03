@@ -18,8 +18,8 @@ RUN wget -O piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023
 RUN /app/venv/bin/pip install --no-cache-dir piper-tts
 
 # copy package files
-COPY ../speaker.py /app/speaker.py
-COPY run_tts.sh /app/run_tts.sh
+COPY speaker.py /app/speaker.py
+COPY docker/run_tts.sh /app/run_tts.sh
 # some more package config
 ENV IN_CONTAINER=1
 RUN chmod +x /app/run_tts.sh
