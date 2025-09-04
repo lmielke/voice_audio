@@ -1,26 +1,36 @@
-# speaker.py
+# File: voice/speaker.py
+
 import os
 import sys
 import argparse
 import subprocess
 import wave
+import logging
 
 try:
     import voice.settings as sts
 except ModuleNotFoundError:
     import settings as sts
-"""
-# Audio playback: try winsound first, then falls back to playsound.
-this module requires docker container setup
 
-# This builds the base container 
-- docker build -t piper_base -f Dockerfile.base .
+# --- Global Logger ---
+logger = logging.getLogger(__name__)
 
-# This builds the TTS container, which is used to generate speach.
-- docker build -t piper_tts -f Dockerfile.tts .
+def setup_logging(*args, log_filename: str, in_container: bool = False, **kwargs):
+    """Configures the logger to write to the specified file."""
+    log_dir = "/output" if in_container else sts.resources_dir
+    os.makedirs(log_dir, exist_ok=True)
+    log_file_path = os.path.join(log_dir, log_filename)
 
-run like: python speaker.py -t "Direct input text for TTS"
-"""
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    handler = logging.FileHandler(log_file_path, mode='w')
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    logger.info(f"--- Logging started for {log_filename} ---")
+
 try:
     import winsound as _winsound
     _has_winsound = True
@@ -42,7 +52,7 @@ def play_audio(file_path: str) -> None:
             _winsound.PlaySound(file_path, _winsound.SND_FILENAME)
             return
         except Exception as e:
-            print("winsound failed:", e)
+            logger.error(f"winsound failed: {e}")
 
     if _has_simpleaudio:
         try:
@@ -51,184 +61,134 @@ def play_audio(file_path: str) -> None:
             play_obj.wait_done()
             return
         except Exception as e:
-            print("simpleaudio failed:", e)
+            logger.error(f"simpleaudio failed: {e}")
 
-    print("No valid audio playback method available.")
+    logger.warning("No valid audio playback method available.")
 
-
-# Try to import PiperVoice for container mode.
 try:
     from piper.voice import PiperVoice
 except ImportError:
     PiperVoice = None
 
-# Constants for container mode.
 MODEL_PATH = "/app/piper_models/en_US-lessac-medium.onnx"
 CONFIG_PATH = MODEL_PATH + ".json"
 INPUT_FILE = "/app/speak.txt"
 OUTPUT_FILE = "/app/output.wav"
 
 def container_text_to_speech(text: str) -> None:
-    """
-    Generate speech from text and save it to OUTPUT_FILE using the PiperVoice API.
-    This function is used when running inside the container.
-    """
+    """Generate speech from text inside the container."""
     if PiperVoice is None:
-        print("Error: PiperVoice is not available. Are you running in the container?")
+        logger.error("PiperVoice is not available. Check piper-tts installation.")
         sys.exit(1)
+    logger.info("PiperVoice found. Loading model...")
     voice = PiperVoice.load(MODEL_PATH, CONFIG_PATH)
+    logger.info("Model loaded. Synthesizing speech...")
     with open(OUTPUT_FILE, "wb") as f:
         voice.synthesize(text, f)
-    print(f"✅ Speech saved to {OUTPUT_FILE}")
+    logger.info(f"Speech saved to {OUTPUT_FILE}")
 
 
 class Speaker:
     def __init__(self, *args, docker_image: str = "piper_tts:latest",
                  container_name: str = "voice_runner",
                  mount_dir: str = None, **kwargs) -> None:
-        """
-        Initialize the Speaker with the Docker image, persistent container name,
-        and mount directory.
-
-        Args:
-            docker_image (str): Name of the Docker image to use.
-            container_name (str): Name of the persistent container.
-            mount_dir (str): Host directory to mount for output.
-                             Defaults to $PWD/output.
-        """
         self.docker_image = docker_image
         self.container_name = container_name
-        # work_dir = os.path.dirname(os.path.abspath(__file__))
         self.mount_dir = mount_dir or os.path.join(sts.resources_dir, "output")
         self.output_dir = f"{self.mount_dir}:/output"
-        # self.mount_dir = mount_dir or os.path.join(os.getcwd(), "output")
         os.makedirs(self.mount_dir, exist_ok=True)
 
     def ensure_container(self, *args, **kwargs) -> None:
-        """
-        Check if the persistent container is running.
-        - If running, do nothing.
-        - If exists but not running, start it.
-        - If it doesn't exist, create and start it.
-        """
-        # Check if container is running.
         result_running = subprocess.run(
             ["docker", "ps", "-q", "-f", f"name=^{self.container_name}$"],
             capture_output=True, text=True
         )
         if result_running.stdout.strip():
-            print(f"Container '{self.container_name}' is running.")
+            logger.info(f"Container '{self.container_name}' is running.")
             return
 
-        # Check if container exists but is stopped.
         result_all = subprocess.run(
             ["docker", "ps", "-aq", "-f", f"name=^{self.container_name}$"],
             capture_output=True, text=True
         )
         if result_all.stdout.strip():
-            print(f"Container '{self.container_name}' exists but is not running. Starting it...")
+            logger.info(f"Container '{self.container_name}' exists but is not running. Starting it...")
             result_start = subprocess.run(
                 ["docker", "start", self.container_name],
                 capture_output=True, text=True
             )
             if result_start.returncode != 0:
-                print("Error starting persistent container:")
-                print(result_start.stderr)
+                logger.error(f"Error starting container: {result_start.stderr}")
                 sys.exit(1)
-            print(f"Container '{self.container_name}' started.")
+            logger.info(f"Container '{self.container_name}' started.")
             return
 
-        # Container does not exist; start a new one using the verified command:
-        # docker run -d --name voice_runner -v ${PWD}\output:/output -e IN_CONTAINER=1 
-        # --entrypoint /bin/bash piper_tts:latest -c "while true; do sleep 3600; done"
-        print(f"Container '{self.container_name}' not found. Starting it...")
+        logger.info(f"Container '{self.container_name}' not found. Creating and starting it...")
         run_cmd = [
-                        "docker", "run", "-d",
-                        "--name", self.container_name,
-                        "-v", self.output_dir,
-                        self.docker_image,
-                    ]
-
+            "docker", "run", "-d", "--name", self.container_name,
+            "-v", self.output_dir, self.docker_image,
+        ]
         res = subprocess.run(run_cmd, capture_output=True, text=True)
         if res.returncode != 0:
-            print("Error starting persistent container:")
-            print(res.stderr)
+            logger.error(f"Error creating container: {res.stderr}")
             sys.exit(1)
-        print(f"Container '{self.container_name}' started.")
+        logger.info(f"Container '{self.container_name}' started.")
 
     def speak(self, text: str, *args, **kwargs) -> None:
-        """
-        Generate speech from text using the persistent container.
-
-        Args:
-            text (str): Text to synthesize.
-        """
         if os.environ.get("IN_CONTAINER"):
             container_text_to_speech(text)
         else:
             self.ensure_container()
-            exec_cmd = [
-                "docker", "exec", self.container_name,
-                "/app/run_tts.sh", text
-            ]
-
-            print(f"DEBUG: Running command -> {' '.join(exec_cmd)}", flush=True)
+            exec_cmd = ["docker", "exec", self.container_name, "/app/run_tts.sh", text]
+            logger.info(f"Running command -> {' '.join(exec_cmd)}")
             try:
-                # Run the command with a 30-second timeout
                 result = subprocess.run(
                     exec_cmd, capture_output=True, text=True, timeout=30
                 )
-            except FileNotFoundError:
-                print("DEBUG: Error -> 'docker' command not found.", flush=True)
-                sys.exit(1)
-            except subprocess.TimeoutExpired:
-                print("DEBUG: Error -> Docker command timed out.", flush=True)
-                sys.exit(1)
             except Exception as e:
-                print(f"DEBUG: Error -> Subprocess failed: {e}", flush=True)
+                logger.error(f"Subprocess execution failed: {e}")
                 sys.exit(1)
 
-            # Print all results for detailed debugging
-            print(f"DEBUG: Return Code: {result.returncode}", flush=True)
-            print(f"DEBUG: Stdout: '{result.stdout.strip()}'", flush=True)
-            print(f"DEBUG: Stderr: '{result.stderr.strip()}'", flush=True)
-
+            logger.debug(f"Return Code: {result.returncode}")
+            logger.debug(f"Stdout: '{result.stdout.strip()}'")
+            logger.debug(f"Stderr: '{result.stderr.strip()}'")
             if result.returncode != 0:
-                print("\nError: Docker exec command failed.", flush=True)
+                logger.error("Docker exec command failed.")
                 sys.exit(1)
 
             output_file = os.path.join(self.mount_dir, "output.wav")
             if not os.path.exists(output_file):
-                print(f"\nError: output.wav was not generated in '{self.mount_dir}'", flush=True)
+                logger.error(f"output.wav was not generated in '{self.mount_dir}'")
                 sys.exit(1)
             
-            print("Playing output.wav...", flush=True)
+            logger.info("Playing output.wav...")
             play_audio(output_file)
 
 def container_exec(*args, **kwargs) -> None:
-    """
-    Run inside container: read /app/speak.txt (created by run_tts.sh) and synthesize.
-    """
+    setup_logging(log_filename="container_speaker.log", in_container=True)
+    logger.info("Executing speaker.py inside container.")
     txt = ""
     if os.path.exists(INPUT_FILE):
         with open(INPUT_FILE, "r", encoding="utf-8") as f:
             txt = f.read().strip()
-    if not txt:
-        container_text_to_speech(f"container_exec Error: speak.txt missing or empty "
-                                f"inside the docker container."
-                                )
-    sys.exit(0)
+    if txt:
+        container_text_to_speech(txt)
+    else:
+        logger.error(f"{INPUT_FILE} missing or empty inside container.")
+        sys.exit(1)
 
-def local_exec(*args, text:str=None, file:str=None, **kwargs):
+def local_exec(*args, text: str = None, file: str = None, **kwargs):
+    setup_logging(log_filename="local_speaker.log")
+    logger.info("Executing speaker.py on host.")
     if text is not None:
         input_text = text
-    elif os.path.exists(str(file)):
+    elif file and os.path.exists(file):
         with open(file, "r", encoding="utf-8") as f:
             input_text = f.read().strip()
     else:
-        print(f"local_exec Error: Neither a text {text = } nor a file {file = } was provided.")
+        logger.error(f"Neither valid text '{text}' nor file '{file}' was provided.")
         sys.exit(1)
-
+    
     speaker = Speaker(*args, **kwargs)
     speaker.speak(input_text, *args, **kwargs)
 
@@ -238,25 +198,19 @@ def main(*args, **kwargs) -> None:
     else:
         local_exec(*args, **kwargs)
 
-def get_kwargs(*args, **kwargs) -> dict:
-    """
-    If speaker is run from outside the package we need to collect the kwargs
-    """
-    parser = argparse.ArgumentParser(
-        description="Generate speech using a persistent Docker TTS container and play the audio."
-    )
+def get_kwargs(*args, **kwargs) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("-t", "--text", help="Direct input text for TTS.")
     group.add_argument("-f", "--file", help="Path to text file for TTS.")
     args = parser.parse_args()
     if not args.text and not args.file:
         if os.environ.get("IN_CONTAINER"):
-            args.file = INPUT_FILE  
+            args.file = INPUT_FILE
         else:
             args.file = os.path.join(sts.resources_dir, "speak.txt")
     return args
 
 if __name__ == "__main__":
-        # Host mode: Parse command-line arguments.
     args = get_kwargs()
     main(text=args.text, file=args.file)
