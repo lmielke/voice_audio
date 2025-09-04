@@ -13,7 +13,6 @@ fi
 
 # Write the exact text (no trailing newline)
 printf "%s" "$TEXT" > /app/speak.txt
-
 # Tell speaker.py to use container mode (reads /app/speak.txt)
 export IN_CONTAINER=1
 

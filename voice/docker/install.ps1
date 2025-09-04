@@ -29,7 +29,7 @@ Write-Host "Installation completed successfully!"
 if (-not (Test-Path -Path "vosk_model")) {
     New-Item -ItemType Directory -Path "vosk_model"
 }
-# # then we download the model
+# # we can also download the model
 # $uri = "https://alphacephei.com/vosk/models/vosk-model-en-us-0.42-gigaspeech.zip"
 # $destination = "vosk_model/vosk-model-en-us-0.42-gigaspeech.zip"
 # Invoke-WebRequest -Uri $uri -OutFile $destination
