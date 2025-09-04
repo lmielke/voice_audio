@@ -179,8 +179,7 @@ class Speaker:
             result = subprocess.run(exec_cmd, capture_output=True, text=True)
             print(result.stdout)
             if result.returncode != 0:
-                print("Error running docker exec command:")
-                print(result.stderr)
+                print(f"Error running docker exec command: {result.stderr = }, {result.stdout = }")
                 sys.exit(1)
             output_file = os.path.join(self.mount_dir, "output.wav")
             if not os.path.exists(output_file):
