@@ -175,6 +175,7 @@ class Speaker:
                         ]
 
             print("Running docker exec command in persistent container...")
+            print(f"Command: {' '.join(exec_cmd)}")
             result = subprocess.run(exec_cmd, capture_output=True, text=True)
             print(result.stdout)
             if result.returncode != 0:
