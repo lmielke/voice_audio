@@ -7,7 +7,7 @@ import wave
 
 try:
     import voice.settings as sts
-except ImportError:
+except ModuleNotFoundError:
     import settings as sts
 """
 # Audio playback: try winsound first, then falls back to playsound.
