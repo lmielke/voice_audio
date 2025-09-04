@@ -68,7 +68,7 @@ CONFIG_PATH = MODEL_PATH + ".json"
 INPUT_FILE = "/app/speak.txt"
 OUTPUT_FILE = "/app/output.wav"
 
-def local_text_to_speech(text: str) -> None:
+def container_text_to_speech(text: str) -> None:
     """
     Generate speech from text and save it to OUTPUT_FILE using the PiperVoice API.
     This function is used when running inside the container.
@@ -164,7 +164,7 @@ class Speaker:
             text (str): Text to synthesize.
         """
         if os.environ.get("IN_CONTAINER"):
-            local_text_to_speech(text)
+            container_text_to_speech(text)
         else:
             self.ensure_container()
             # Use the verified docker exec command.
@@ -187,31 +187,35 @@ class Speaker:
             print("Playing output.wav...")
             play_audio(output_file)
 
-def main(*args, text:str=None, file:str=None, **kwargs) -> None:
+def container_exec(*args, **kwargs):
     # If running inside the container, bypass argument parsing.
-    if os.environ.get("IN_CONTAINER"):
-        if not os.path.exists(INPUT_FILE):
-            print(f"❌ Error: {INPUT_FILE} not found in container.")
-            sys.exit(1)
-        with open(INPUT_FILE, "r", encoding="utf-8") as f:
-            loaded_text = f.read().strip()
-        if not loaded_text:
-            print("❌ Error: speak.txt is empty in container.")
-            sys.exit(1)
-        local_text_to_speech(loaded_text)
-        sys.exit(0)
+    if not os.path.exists(INPUT_FILE):
+        loaded_text = "container_exec Error: speak.txt not found inside the docker container."
+    with open(INPUT_FILE, "r", encoding="utf-8") as f:
+        loaded_text = f.read().strip()
+    if not loaded_text:
+        loaded_text = "container_exec Error: speak.txt is empty inside the docker container."
+    container_text_to_speech(loaded_text)
+    sys.exit(0)
 
+def local_exec(*args, text:str=None, file:str=None, **kwargs):
     if text is not None:
         input_text = text
     elif os.path.exists(str(file)):
         with open(file, "r", encoding="utf-8") as f:
             input_text = f.read().strip()
     else:
-        print(f"Error: file '{file}' does not exist.")
+        print(f"local_exec Error: Neither a text {text = } nor a file {file = } was provided.")
         sys.exit(1)
 
     speaker = Speaker(*args, **kwargs)
     speaker.speak(input_text, *args, **kwargs)
+
+def main(*args, **kwargs) -> None:
+    if os.environ.get("IN_CONTAINER"):
+        container_exec(*args, **kwargs)
+    else:
+        local_exec(*args, **kwargs)
 
 def get_kwargs(*args, **kwargs) -> dict:
     """
@@ -220,10 +224,15 @@ def get_kwargs(*args, **kwargs) -> dict:
     parser = argparse.ArgumentParser(
         description="Generate speech using a persistent Docker TTS container and play the audio."
     )
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument("-t", "--text", help="Direct input text for TTS.")
     group.add_argument("-f", "--file", help="Path to text file for TTS.")
     args = parser.parse_args()
+    if not args.text and not args.file:
+        if os.environ.get("IN_CONTAINER"):
+            args.file = INPUT_FILE  
+        else:
+            args.file = os.path.join(sts.resources_dir, "speak.txt")
     return args
 
 if __name__ == "__main__":
