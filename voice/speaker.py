@@ -77,8 +77,8 @@ def container_text_to_speech(text: str) -> None:
         print("Error: PiperVoice is not available. Are you running in the container?")
         sys.exit(1)
     voice = PiperVoice.load(MODEL_PATH, CONFIG_PATH)
-    with wave.open(OUTPUT_FILE, "wb") as wav_file:
-        voice.synthesize(text, wav_file)
+    with open(OUTPUT_FILE, "wb") as f:
+        voice.synthesize(text, f)
     print(f"✅ Speech saved to {OUTPUT_FILE}")
 
 
@@ -143,11 +143,12 @@ class Speaker:
         # --entrypoint /bin/bash piper_tts:latest -c "while true; do sleep 3600; done"
         print(f"Container '{self.container_name}' not found. Starting it...")
         run_cmd = [
-                        "docker", "run", "-d",
-                        "--name", self.container_name,
-                        "-v", self.output_dir,
-                        self.docker_image,
-                    ]
+                    "docker", "run", "-d",
+                    "--name", self.container_name,
+                    "-v", self.output_dir,
+                    self.docker_image,
+                    "bash", "-lc", "sleep infinity",
+        ]
 
         res = subprocess.run(run_cmd, capture_output=True, text=True)
         if res.returncode != 0:
@@ -187,15 +188,18 @@ class Speaker:
             print("Playing output.wav...")
             play_audio(output_file)
 
-def container_exec(*args, **kwargs):
-    # If running inside the container, bypass argument parsing.
-    if not os.path.exists(INPUT_FILE):
-        loaded_text = "container_exec Error: speak.txt not found inside the docker container."
-    with open(INPUT_FILE, "r", encoding="utf-8") as f:
-        loaded_text = f.read().strip()
-    if not loaded_text:
-        loaded_text = "container_exec Error: speak.txt is empty inside the docker container."
-    container_text_to_speech(loaded_text)
+def container_exec(*args, **kwargs) -> None:
+    """
+    Run inside container: read /app/speak.txt (created by run_tts.sh) and synthesize.
+    """
+    txt = ""
+    if os.path.exists(INPUT_FILE):
+        with open(INPUT_FILE, "r", encoding="utf-8") as f:
+            txt = f.read().strip()
+    if not txt:
+        container_text_to_speech(f"container_exec Error: speak.txt missing or empty "
+                                f"inside the docker container."
+                                )
     sys.exit(0)
 
 def local_exec(*args, text:str=None, file:str=None, **kwargs):
