@@ -170,7 +170,7 @@ class Speaker:
             # Use the verified docker exec command.
             exec_cmd = [
                             "docker", "exec", self.container_name,
-                            "/app/run_tts.sh", "-t", text
+                            "/app/run_tts.sh", text
                         ]
 
             print("Running docker exec command in persistent container...")
