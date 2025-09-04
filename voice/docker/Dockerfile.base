@@ -1,37 +1,34 @@
-# Start with the base image
-FROM ubuntu:latest
+# File: voice/docker/Dockerfile.tts
 
-# Declare the build argument here so it's in scope
-ARG DEBIAN_FRONTEND=noninteractive
-ENV DEBIAN_FRONTEND=$DEBIAN_FRONTEND
+FROM piper_base
 
-# Set working directory inside container
-RUN ls -la /
 WORKDIR /app
 
-# Update system and install dependencies
-RUN apt update && apt install -y \
-    software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa -y \
-    && apt update && apt install -y \
-    python3.12 python3.12-venv python3.12-dev python3-pip \
-    wget curl unzip libsndfile1 build-essential ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-# We need to convert the files to unix format
-# Create a virtual environment in the container using Python 3.12
-RUN python3.12 -m venv /app/venv
+ENV PATH="/app/venv/bin:/app/piper:$PATH"
 
-# Copy requirements file into the container
-# Paths are now relative to the project root context
-COPY voice/docker/requirements.txt /app/requirements.txt
+# Install PulseAudio and dos2unix to ensure correct script format
+RUN apt-get update && apt-get install -y --no-install-recommends pulseaudio-utils dos2unix && rm -rf /var/lib/apt/lists/*
+
+RUN wget -O piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz \
+    && tar -xvf piper.tar.gz -C /app/ \
+    && rm piper.tar.gz \
+    && chmod +x /app/piper/piper
+
+RUN /app/venv/bin/pip install --no-cache-dir piper-tts
+
 COPY voice/speaker.py /app/speaker.py
 COPY voice/settings.py /app/settings.py
-# Converting the files
+COPY voice/docker/run_tts.sh /app/run_tts.sh
 
-# Upgrade pip and install required Python libraries
-RUN /app/venv/bin/pip install --upgrade pip setuptools wheel \
-    && /app/venv/bin/pip install --no-cache-dir -r /app/requirements.txt
+ENV IN_CONTAINER=1
 
-# Base image built successfully
-CMD ["/bin/bash"]
+# Convert script to Unix format and make it executable
+RUN dos2unix /app/run_tts.sh && chmod +x /app/run_tts.sh
 
+RUN mkdir -p /app/piper_models \
+    && wget -O /app/piper_models/en_US-lessac-medium.onnx \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx \
+    && wget -O /app/piper_models/en_US-lessac-medium.onnx.json \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json
+
+CMD ["tail", "-f", "/dev/null"]
