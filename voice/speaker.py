@@ -167,23 +167,42 @@ class Speaker:
             container_text_to_speech(text)
         else:
             self.ensure_container()
-            # Use the verified docker exec command.
             exec_cmd = [
-                            "docker", "exec", self.container_name,
-                            "/app/run_tts.sh", text
-                        ]
+                "docker", "exec", self.container_name,
+                "/app/run_tts.sh", text
+            ]
 
-            print(f"Running docker exec command in container: {' '.join(exec_cmd)}")
-            result = subprocess.run(exec_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                print("Error running docker exec command:")
-                print(f"{result.stderr = }")
+            print(f"DEBUG: Running command -> {' '.join(exec_cmd)}", flush=True)
+            try:
+                # Run the command with a 30-second timeout
+                result = subprocess.run(
+                    exec_cmd, capture_output=True, text=True, timeout=30
+                )
+            except FileNotFoundError:
+                print("DEBUG: Error -> 'docker' command not found.", flush=True)
                 sys.exit(1)
+            except subprocess.TimeoutExpired:
+                print("DEBUG: Error -> Docker command timed out.", flush=True)
+                sys.exit(1)
+            except Exception as e:
+                print(f"DEBUG: Error -> Subprocess failed: {e}", flush=True)
+                sys.exit(1)
+
+            # Print all results for detailed debugging
+            print(f"DEBUG: Return Code: {result.returncode}", flush=True)
+            print(f"DEBUG: Stdout: '{result.stdout.strip()}'", flush=True)
+            print(f"DEBUG: Stderr: '{result.stderr.strip()}'", flush=True)
+
+            if result.returncode != 0:
+                print("\nError: Docker exec command failed.", flush=True)
+                sys.exit(1)
+
             output_file = os.path.join(self.mount_dir, "output.wav")
             if not os.path.exists(output_file):
-                print("Error: output.wav was not generated.")
+                print(f"\nError: output.wav was not generated in '{self.mount_dir}'", flush=True)
                 sys.exit(1)
-            print("Playing output.wav...")
+            
+            print("Playing output.wav...", flush=True)
             play_audio(output_file)
 
 def container_exec(*args, **kwargs) -> None:
