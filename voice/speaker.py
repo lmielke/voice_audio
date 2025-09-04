@@ -5,8 +5,10 @@ import argparse
 import subprocess
 import wave
 
-import voice.settings as sts
-
+try:
+    import voice.settings as sts
+except ImportError:
+    import settings as sts
 """
 # Audio playback: try winsound first, then falls back to playsound.
 this module requires docker container setup
