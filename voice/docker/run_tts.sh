@@ -1,5 +1,3 @@
-# File: voice/docker/run_tts.sh
-
 #!/usr/bin/env bash
 
 # --- Debug Logging Setup ---
