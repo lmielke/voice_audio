@@ -143,12 +143,11 @@ class Speaker:
         # --entrypoint /bin/bash piper_tts:latest -c "while true; do sleep 3600; done"
         print(f"Container '{self.container_name}' not found. Starting it...")
         run_cmd = [
-                    "docker", "run", "-d",
-                    "--name", self.container_name,
-                    "-v", self.output_dir,
-                    self.docker_image,
-                    "bash", "-lc", "sleep infinity",
-        ]
+                        "docker", "run", "-d",
+                        "--name", self.container_name,
+                        "-v", self.output_dir,
+                        self.docker_image,
+                    ]
 
         res = subprocess.run(run_cmd, capture_output=True, text=True)
         if res.returncode != 0:
@@ -174,12 +173,11 @@ class Speaker:
                             "/app/run_tts.sh", text
                         ]
 
-            print("Running docker exec command in persistent container...")
-            print(f"Command: {' '.join(exec_cmd)}")
+            print(f"Running docker exec command in container: {' '.join(exec_cmd)}")
             result = subprocess.run(exec_cmd, capture_output=True, text=True)
-            print(result.stdout)
             if result.returncode != 0:
-                print(f"Error running docker exec command: {result.stderr = }, {result.stdout = }")
+                print("Error running docker exec command:")
+                print(f"{result.stderr = }")
                 sys.exit(1)
             output_file = os.path.join(self.mount_dir, "output.wav")
             if not os.path.exists(output_file):
