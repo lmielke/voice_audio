@@ -19,6 +19,7 @@ RUN /app/venv/bin/pip install --no-cache-dir piper-tts
 
 # copy package files -- PATHS UPDATED
 COPY voice/speaker.py /app/speaker.py
+COPY voice/settings.py /app/settings.py
 COPY voice/docker/run_tts.sh /app/run_tts.sh
 
 # some more package config

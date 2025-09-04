@@ -25,6 +25,7 @@ RUN python3.11 -m venv /app/venv
 # Paths are now relative to the project root context
 COPY voice/docker/requirements.txt /app/requirements.txt
 COPY voice/speaker.py /app/speaker.py
+COPY voice/settings.py /app/settings.py
 # Converting the files
 
 # Upgrade pip and install required Python libraries
