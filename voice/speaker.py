@@ -76,17 +76,25 @@ INPUT_FILE = "/app/speak.txt"
 OUTPUT_FILE = "/app/output.wav"
 
 def container_text_to_speech(text: str) -> None:
-    """Generate speech from text inside the container."""
-    if PiperVoice is None:
-        logger.error("PiperVoice is not available. Check piper-tts installation.")
+    """Generate speech from text by calling the piper executable."""
+    logger.info("Calling piper executable directly via subprocess...")
+    command = [
+        "/app/piper/piper",
+        "--model", MODEL_PATH,
+        "--output_file", OUTPUT_FILE,
+    ]
+    try:
+        # Execute the command, passing the text to its standard input
+        result = subprocess.run(
+            command, input=text, text=True, check=True, capture_output=True
+        )
+        logger.info("Piper subprocess finished successfully.")
+        logger.debug(f"Piper stdout: {result.stdout}")
+    except subprocess.CalledProcessError as e:
+        logger.error("Piper subprocess failed.")
+        logger.error(f"Return code: {e.returncode}")
+        logger.error(f"Stderr: {e.stderr}")
         sys.exit(1)
-    logger.info("PiperVoice found. Loading model...")
-    voice = PiperVoice.load(MODEL_PATH, CONFIG_PATH)
-    logger.info("Model loaded. Synthesizing speech...")
-    with open(OUTPUT_FILE, "wb") as f:
-        voice.synthesize(text, f)
-    logger.info(f"Speech saved to {OUTPUT_FILE}")
-
 
 class Speaker:
     def __init__(self, *args, docker_image: str = "piper_tts:latest",
