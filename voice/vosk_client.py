@@ -7,8 +7,8 @@ from pynput import keyboard
 import voice.settings as sts
 
 class VoskClient:
-    def __init__(self, *args, va_server_ix: int, key: str = "f20", **kwargs):
-        self.server_url = f"http://while-ai-{va_server_ix}:{sts.va_port}"
+    def __init__(self, *args, va_server: int, key: str = "f20", **kwargs):
+        self.server_url = f"{va_server}:{sts.va_port}"
         self.trigger_key_str = key.lower()
         self.is_listening = False
         try:

@@ -58,6 +58,6 @@ def set_server_name(*args, va_server_ix:int=None, **kwargs):
             exit()
         else:
             # we construct the va_server variable using va_server_prefix
-            va_server = f"http://{sts.va_server_prefix}{va_server_ix}"
+            va_server = f"{sts.servers.get(f'{sts.va_server_prefix}{va_server_ix}', None)}"
             print(f"{Fore.GREEN}Using va_server: {va_server}{Style.RESET_ALL}")
-    return {'va_server': va_server} if va_server_ix is not None else {}
+    return {'va_server': f"http://{va_server}"} if va_server_ix is not None else {}

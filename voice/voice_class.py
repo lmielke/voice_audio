@@ -168,45 +168,53 @@ class Listener:
         self.recording_thread.start()
 
     def pause_recording(self, *args, **kwargs) -> None:
-        """
-        Stop the recording process, immediately flush the audio buffer,
-        and reinitialize the recognizer for the next recording session.
-        """
-        self.recording = False
-        # Flush the audio buffer by calling FinalResult on the recognizer.
-        time.sleep(.1)
-        final_res = self.recognizer.FinalResult()
-        final_text = eval(final_res).get("text", "").strip()
-        if final_text and final_text not in INVALID_TERMS:
-            self.conversation.append_message(role="user", content=final_text)
-        print(f"{Fore.RED}Recording paused!{Style.RESET_ALL}")
-        self.gui_root.withdraw()  # hide recording symbol
-        if self.recording_thread:
-            self.recording_thread.join()
-        # Reinitialize the recognizer so that new audio can be processed.
-        self.recognizer = KaldiRecognizer(self.model, RATE)
+            """
+            Signals the recording thread to stop and waits for it to finish.
+            """
+            if self.recording and self.recording_thread.is_alive():
+                self.recording = False
+                self.recording_thread.join()  # Wait for the thread to clean up
 
     def record_audio(self, *args, **kwargs) -> None:
-        if not self.running or not self.recording:
-            return
-        self.stream = self.audio.open(format=FORMAT, channels=CHANNELS, rate=RATE,
-                                      input=True, frames_per_buffer=CHUNK)
-        self.last_speech_time = time.time()
-        self.frames = []
-        # Optionally speak a reaction before starting
-        self.say_hello(*args, **kwargs)
-        while self.running and self.recording:
-            self.hold_while_speaking(*args, **kwargs)
-            self.recognize_text(*args, **kwargs)
-            if self.is_valid_text(*args, **kwargs):
-                self.conversation.append_message(role="user", content=self.text)
-                self.last_speech_time = time.time()
-        self.stream.stop_stream()
-        self.stream.close()
-        self.gui_root.withdraw()
-        self.speaker.play_sound(status="STOP")
-        self.cleanup(*args, **kwargs)
-        self.save_audio(self.frames)
+            if not self.running or not self.recording:
+                return
+            stream = self.audio.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=RATE,
+                input=True,
+                frames_per_buffer=CHUNK,
+            )
+            self.last_speech_time = time.time()
+            frames = []
+            self.say_hello(*args, **kwargs)
+
+            while self.running and self.recording:
+                self.hold_while_speaking(*args, **kwargs)
+                data = stream.read(CHUNK, exception_on_overflow=False)
+                if self.recognizer.AcceptWaveform(data):
+                    self.text = eval(self.recognizer.Result())["text"].strip()
+                else:
+                    self.text = ""
+                frames.append(data)
+                if self.is_valid_text(*args, **kwargs):
+                    self.conversation.append_message(role="user", content=self.text)
+                    self.last_speech_time = time.time()
+
+            # --- SAFE CLEANUP SEQUENCE ---
+            stream.stop_stream()
+            stream.close()
+
+            # Now that the stream is safely closed, get the final result.
+            final_text = eval(self.recognizer.FinalResult()).get("text", "").strip()
+            if final_text and final_text not in INVALID_TERMS:
+                 self.conversation.append_message(role="user", content=final_text)
+
+            print(f"{Fore.RED}Recording paused!{Style.RESET_ALL}")
+            self.gui_root.withdraw()
+            self.speaker.play_sound(status="STOP")
+            self.save_audio(frames)
+            self.recognizer = KaldiRecognizer(self.model, RATE)
 
     def say_hello(self, *args, **kwargs) -> None:
         """
