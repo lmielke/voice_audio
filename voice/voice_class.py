@@ -396,7 +396,7 @@ class App:
         Run the main application logic.
         """
         self.initial_loading()
-        self.start_listener_thread()
+        # self.start_listener_thread()
         self.start_gui()
 
     def initial_loading(self, *args, **kwargs) -> None:
