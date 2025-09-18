@@ -21,7 +21,8 @@ $checks += [pscustomobject]@{Check="Docker available"; Pass=($r.Code -eq 0); Det
 # Container running?
 $r = Exec @("docker","ps","-q","-f","name=^$Container$")
 $running = [bool]$r.Out.Trim()
-$checks += [pscustomobject]@{Check="Container running"; Pass=$running; Detail=($running?"Up":"Not running"); Hint=""}
+$detail = if ($running) { "Up" } else { "Not running" }
+$checks += [pscustomobject]@{Check="Container running"; Pass=$running; Detail=$detail; Hint=""}
 if (-not $running) { $checks | Format-Table -AutoSize; return }
 
 # Mounts
