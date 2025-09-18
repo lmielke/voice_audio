@@ -1,57 +1,60 @@
-import argparse
+# Replace the entire contents of this file with the new class-based structure
+
 import requests
 import time
 import threading
 from pynput import keyboard
+import voice.settings as sts
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--server", required=True, help="Server index (e.g. 1 for while-ai-1)")
-    parser.add_argument("-k", "--key", default="f20", help="Trigger key (default: f20)")
-    return parser.parse_args()
+class VoskClient:
+    def __init__(self, *args, va_server_ix: int, key: str = "f20", **kwargs):
+        self.server_url = f"http://while-ai-{va_server_ix}:{sts.va_port}"
+        self.trigger_key_str = key.lower()
+        self.is_listening = False
+        try:
+            self.trigger_key = getattr(keyboard.Key, self.trigger_key_str)
+        except AttributeError:
+            raise ValueError(f"Invalid trigger key: {self.trigger_key_str}")
 
-args = parse_args()
-SERVER_URL = f"http://while-ai-{args.server}:5005"
-TRIGGER_KEY = args.key.lower()
-
-is_listening = False
-
-def listen_and_get_result():
-    global is_listening
-    if not is_listening:
-        print(f"Triggering remote listen on {SERVER_URL}/listen ...")
-        requests.post(f"{SERVER_URL}/listen")
-        is_listening = True
-        print("Listening started. Press the trigger key again to stop and fetch result.")
-    else:
-        print(f"Sending hold signal to {SERVER_URL}/hold ...")
-        requests.post(f"{SERVER_URL}/hold")
+    def _get_result(self):
         print("Waiting for result...")
         while True:
-            resp = requests.get(f"{SERVER_URL}/result")
-            result = resp.json().get("result")
-            if result:
-                print("Transcript:", result)
+            try:
+                resp = requests.get(f"{self.server_url}/result", timeout=5)
+                resp.raise_for_status()
+                result = resp.json().get("result")
+                if result:
+                    transcript = " ".join([msg.get("content", "") for msg in result])
+                    print(f"Transcript: {transcript}")
+                    break
+            except requests.exceptions.RequestException as e:
+                print(f"Error fetching result: {e}")
                 break
             time.sleep(1)
-        is_listening = False
-        print("Ready for next session. Press the trigger key to start listening again.")
+        self.is_listening = False
+        print("Ready for next session. Press F20 to start again.")
 
-def on_press(key):
-    try:
-        if hasattr(keyboard.Key, TRIGGER_KEY) and key == getattr(keyboard.Key, TRIGGER_KEY):
-            threading.Thread(target=listen_and_get_result, daemon=True).start()
-    except Exception as e:
-        print(f"Key error: {e}")
+    def _toggle_listening(self):
+        endpoint = "hold" if self.is_listening else "listen"
+        action = "Stopping" if self.is_listening else "Starting"
+        print(f"{action} remote listening on {self.server_url}/{endpoint}...")
+        try:
+            requests.post(f"{self.server_url}/{endpoint}", timeout=5)
+            self.is_listening = not self.is_listening
+            if not self.is_listening: # If we just stopped, get the result
+                self._get_result()
+        except requests.exceptions.RequestException as e:
+            print(f"Error communicating with server: {e}")
 
-if __name__ == "__main__":
-    print(f"Press {TRIGGER_KEY.upper()} to start/stop remote Vosk listener (Ctrl+C to exit)...")
-    listener = keyboard.Listener(on_press=on_press)
-    listener.daemon = True
-    listener.start()
-    try:
-        while True:
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        print("\nExiting vosk_client.")
-        listener.stop()
+    def on_press(self, key):
+        if key == self.trigger_key:
+            threading.Thread(target=self._toggle_listening, daemon=True).start()
+
+    def run(self):
+        print(f"Vosk Client started. Connecting to {self.server_url}")
+        print(f"Press {self.trigger_key_str.upper()} to toggle listening.")
+        with keyboard.Listener(on_press=self.on_press) as listener:
+            try:
+                listener.join()
+            except KeyboardInterrupt:
+                print("\nExiting client.")

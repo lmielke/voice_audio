@@ -30,6 +30,17 @@ def mk_args():
         type=str,
         default=None,
         help=f"Port to run server.pyw on i.e. 9005"
+    )    
+
+    parser.add_argument(
+        "-s",
+        "--va_server_ix",
+        required=False,
+        nargs=None,
+        const=None,
+        type=int,
+        default=None,
+        help=f"Voice Assistant server index, e.g. http://while-ai- 1 :5005"
     )
 
     parser.add_argument(

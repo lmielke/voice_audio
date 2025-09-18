@@ -9,6 +9,7 @@ def checks(*args, **kwargs):
     kwargs = clean_kwargs(*args, **kwargs)
     check_missing_kwargs(*args, **kwargs)
     check_env_vars(*args, **kwargs)
+    kwargs.update(set_server_name(*args, **kwargs))
     return kwargs
 
 def check_env_vars(*args, **kwargs):
@@ -21,7 +22,6 @@ def check_env_vars(*args, **kwargs):
         from dotenv import load_dotenv
         env_file = os.path.join(sts.project_dir, ".env")
         load_dotenv(env_file)
-
 
 def clean_kwargs(*args, **kwargs):
     # kwargs might come from a LLM api and might be poluted with whitespaces ect.
@@ -46,3 +46,18 @@ def check_missing_kwargs(*args, api,  **kwargs):
         print(f"{Fore.RED}Missing required arguments: {missings}{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}Required arguments are: {requireds}{Style.RESET_ALL}")
         exit()
+
+def set_server_name(*args, va_server_ix:int=None, **kwargs):
+    if va_server_ix is not None:
+        # we check that va_server_ix is a integer between 0 and 10
+        if type(va_server_ix) is not int:
+            print(f"{Fore.RED}va_server_ix must be an integer between 0 and 10{Style.RESET_ALL}")
+            exit()
+        elif not (0 <= va_server_ix <= 10):
+            print(f"{Fore.RED}va_server_ix must be an integer between 0 and 10{Style.RESET_ALL}")
+            exit()
+        else:
+            # we construct the va_server variable using va_server_prefix
+            va_server = f"http://{sts.va_server_prefix}{va_server_ix}"
+            print(f"{Fore.GREEN}Using va_server: {va_server}{Style.RESET_ALL}")
+    return {'va_server': va_server} if va_server_ix is not None else {}

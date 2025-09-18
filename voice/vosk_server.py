@@ -1,6 +1,8 @@
+# voice/vosk_server.py
+
 import time, threading
 from flask import Flask, jsonify
-from voice_class import App
+from voice.voice_class import App
 
 app = Flask(__name__)
 
@@ -106,7 +108,3 @@ def stop():
     server = app.config["VOSK_SERVER"]
     server.running = False
     return jsonify({"status": "stopped"})
-
-if __name__ == "__main__":
-    vs = VoskServer()
-    vs.run()

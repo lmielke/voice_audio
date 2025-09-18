@@ -16,7 +16,7 @@ import voice.settings as sts
 # Configuration
 # ---------------------------------------
 BASE = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = "vosk_model/vosk-model-en-us-0.42-gigaspeech"
+MODEL_PATH = os.path.join(sts.resources_dir, 'vosk_model', 'vosk-model-en-us-0.42-gigaspeech')
 TIMEOUT_SECONDS = 20
 LISTEN_TIMEOUT = .1
 PROGRESS_BAR_SECONDS = 28
