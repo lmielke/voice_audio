@@ -317,10 +317,8 @@ class Conversation:
             self.msg_count_assistant += 1
         elif role == "user":
             self.msg_count_user += 1
-
         color = Fore.YELLOW if role == "assistant" else Fore.GREEN
         print(f"{color}{role}:{Style.RESET_ALL} {content}")
-
         threading.Thread(target=self._save_message_to_file, args=(msg,)).start()
 
     def _save_message_to_file(self, msg: dict) -> None:
